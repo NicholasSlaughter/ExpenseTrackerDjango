@@ -47,19 +47,44 @@ def about(request):
 
 def EnterExpense(request):
     assert isinstance(request, HttpRequest)
-    categories_to_display = Category.objects.all()
-    return render(
-        request,
-        'app/EnterExpense.html',
-        {
-            'title':'Enter Expense',
-            'message':'Where you enter expenses',
-            'year':datetime.now().year,
 
-            'expense': Expense,
-            'category': categories_to_display,
-            }
-        )
+    if request.method=="POST":
+        if request.POST.get('category_name') and request.POST.get('expense_amount'):
+            expense_to_save = Expense()
+            expense_to_save.amount = request.POST.get('expense_amount')
+            expense_to_save.date = datetime.now()
+            expense_to_save.category = Category.objects.get(name=request.POST.get('category_name'))
+            try:
+                expense_to_save.save()
+                categories_to_display = Category.objects.all()
+                return render(
+                    request,
+                    'app/EnterExpense.html',
+                    {
+                        'title':'Enter Expense',
+                        'message':'Where you enter expenses',
+                        'year':datetime.now().year,
+
+                        'expense': Expense,
+                        'category': categories_to_display,
+                        }
+                    )
+            except:
+                print("Error can't save")
+    else:
+        categories_to_display = Category.objects.all()
+        return render(
+            request,
+            'app/EnterExpense.html',
+            {
+                'title':'Enter Expense',
+                'message':'Where you enter expenses',
+                'year':datetime.now().year,
+
+                'expense': Expense,
+                'category': categories_to_display,
+                }
+            )
 
 def History(request):
     assert isinstance(request, HttpRequest)
