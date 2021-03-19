@@ -88,6 +88,7 @@ def EnterExpense(request):
 
 def History(request):
     assert isinstance(request, HttpRequest)
+    expenses = Expense.objects.all()
     return render(
         request,
         'app/History.html',
@@ -95,6 +96,7 @@ def History(request):
             'title':'Expense History',
             'message':'Where you view your history of expenses',
             'year':datetime.now().year,
+            'expenses': expenses,
             }
         )
 
