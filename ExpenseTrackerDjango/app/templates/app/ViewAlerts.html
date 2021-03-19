@@ -5,6 +5,53 @@
 <h2>{{ title }}</h2>
 <h3>{{message}}</h3>
 
-
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                Period
+            </th>
+            <th>
+                Category
+            </th>
+            <th>
+                Current Amount
+            </th>
+            <th>
+                Max Amount
+            </th>
+            <th>
+                Start of Period
+            </th>
+            <th>
+                End of Period
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for alert in alerts %}
+        <tr>
+            <td>
+                {{alert.period.name}}
+            </td>
+            <td>
+                {{alert.category.name}}
+            </td>
+            <td>
+                ${{alert.current_amount}}
+            </td>
+            <td>
+                ${{alert.max_amount}}
+            </td>
+            <td>
+                {{alert.period_start_date}}
+            </td>
+            <td>
+                {{alert.period_end_date}}
+            </td>
+        </tr>
+        {%endfor%}
+    </tbody>
+</table>
 
 {% endblock %}

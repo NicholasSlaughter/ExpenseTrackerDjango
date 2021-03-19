@@ -34,6 +34,8 @@ class Period(models.Model):
 class Alert(models.Model):
     max_amount = models.FloatField(max_length=20,null=False)
     current_amount = models.FloatField(max_length=20,null=False)
+    period_start_date = models.DateTimeField(null=False,default="1111-11-11 11:11")
+    period_end_date = models.DateTimeField(null=False,default="1111-11-11 11:11")
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
     period = models.ForeignKey(Period, on_delete=models.CASCADE)
     #application_user = models.ForeignKey(ApplicationUser,on_delete=models.CASCADE)
