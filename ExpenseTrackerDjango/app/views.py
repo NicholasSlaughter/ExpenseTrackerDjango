@@ -183,17 +183,57 @@ def History(request):
 
 def ViewAlerts(request):
     assert isinstance(request, HttpRequest)
-    alerts=Alert.objects.all()
-    return render(
-        request,
-        'app/ViewAlerts.html',
-        {
-            'title':'View Alerts',
-            'message':'Where you view your alerts',
-            'year':datetime.now().year,
-            'alerts':alerts,
-            }
-        )
+    if request.method=="POST":
+        if request.POST.get('order_type'):
+            alerts = Alert.objects.all()
+            order_of_list = request.POST.get('order_type')
+            if order_of_list == "Newest Period Start Date - Oldest Period Start Date":
+                alerts = alerts.order_by('period_start_date')
+            elif order_of_list == "Oldest Period Start Date - Newest Period Start Date":
+                alerts = alerts.order_by('-period_start_date')
+            elif order_of_list == "Newest Period End Date - Oldest Period End Date":
+                alerts = alerts.order_by('period_end_date')
+            elif order_of_list == "Oldest Period End Date - Newest Period End Date":
+                alerts = alerts.order_by('-period_end_date')
+            elif order_of_list == "Highest Max Amount - Lowest Max Amount":
+                alerts = alerts.order_by('-max_amount')
+            elif order_of_list == "Lowest Max Amount - Highest Max Amount":
+                alerts = alerts.order_by('max_amount')
+            elif order_of_list == "Highest Current Amount - Lowest Current Amount":
+                alerts = alerts.order_by('-current_amount')
+            elif order_of_list == "Lowest Current Amount - Highest Current Amount":
+                alerts = alerts.order_by('current_amount')
+            elif order_of_list == "Category":
+                alerts = alerts.order_by('category__name')
+            else:
+                alerts = alerts.order_by('period__name')
+
+        return render(
+            request,
+            'app/ViewAlerts.html',
+            {
+                'title':'View Alerts',
+                'message':'Where you view your alerts',
+                'year':datetime.now().year,
+                'alerts':alerts,
+                'sort': order_of_list,
+                'post_called': True,
+                }
+            )
+    else:
+        alerts=Alert.objects.all()
+        return render(
+            request,
+            'app/ViewAlerts.html',
+            {
+                'title':'View Alerts',
+                'message':'Where you view your alerts',
+                'year':datetime.now().year,
+                'alerts':alerts,
+                'sort': None,
+                'post_called': False,
+                }
+            )
 
 def AddAlerts(request):
     assert isinstance(request, HttpRequest)

@@ -5,6 +5,43 @@
 <h2>{{ title }}</h2>
 <h3>{{message}}</h3>
 
+<div class="row-md-4">
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            {% if post_called %}
+            <select id="order_type" type="text" name="order_type" onchange="this.form.submit()">
+                <option selected disabled="true">{{sort}}</option>
+                <option>Newest Period Start Date - Oldest Period Start Date</option>
+                <option>Oldest Period Start Date - Newest Period Start Date</option>                
+                <option>Newest Period End Date - Oldest Period End Date</option>
+                <option>Oldest Period End Date - Newest Period End Date</option>
+                <option>Highest Max Amount - Lowest Max Amount</option>
+                <option>Lowest Max Amount - Highest Max Amount</option>
+                <option>Highest Current Amount - Lowest Current Amount</option>                
+                <option>Lowest Current Amount - Highest Current Amount</option>
+                <option>Category</option>
+                <option>Period</option>
+            </select>
+            {% else %}
+            <select id="order_type" type="text" name="order_type" onchange="this.form.submit()">
+                <option selected disabled="true">-- List Order --</option>
+                <option>Newest Period Start Date - Oldest Period Start Date</option>
+                <option>Oldest Period Start Date - Newest Period Start Date</option>                
+                <option>Newest Period End Date - Oldest Period End Date</option>
+                <option>Oldest Period End Date - Newest Period End Date</option>
+                <option>Highest Max Amount - Lowest Max Amount</option>
+                <option>Lowest Max Amount - Highest Max Amount</option>
+                <option>Highest Current Amount - Lowest Current Amount</option>                
+                <option>Lowest Current Amount - Highest Current Amount</option>
+                <option>Category</option>
+                <option>Period</option>
+            </select>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
 <table class="table">
     <thead>
         <tr>
