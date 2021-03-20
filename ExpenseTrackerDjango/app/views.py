@@ -137,17 +137,49 @@ def EnterExpense(request):
 
 def History(request):
     assert isinstance(request, HttpRequest)
-    expenses = Expense.objects.all()
-    return render(
-        request,
-        'app/History.html',
-        {
-            'title':'Expense History',
-            'message':'Where you view your history of expenses',
-            'year':datetime.now().year,
-            'expenses': expenses,
-            }
-        )
+
+    if request.method=="POST":
+        if request.POST.get('order_type'):
+            expenses = Expense.objects.all()
+            order_of_list = request.POST.get('order_type')
+            if order_of_list == "Newest - Oldest":
+                expenses = expenses.order_by('date')
+            elif order_of_list == "Oldest - Newest":
+                expenses = expenses.order_by('-date')
+            elif order_of_list == "Highest Amount - Lowest Amount":
+                expenses = expenses.order_by('-amount')
+            elif order_of_list == "Lowest Amount - Highest Amount":
+                expenses = expenses.order_by('amount')
+            else:
+                expenses = expenses.order_by('category__name')
+
+        return render(
+            request,
+            'app/History.html',
+            {
+                'title':'Expense History',
+                'message':'Where you view your history of expenses',
+                'year':datetime.now().year,
+                'expenses': expenses,
+                'sort': order_of_list,
+                'post_called': True,
+                }
+            )
+
+    else:
+        expenses = Expense.objects.all()
+        return render(
+            request,
+            'app/History.html',
+            {
+                'title':'Expense History',
+                'message':'Where you view your history of expenses',
+                'year':datetime.now().year,
+                'expenses': expenses,
+                'sort': None,
+                'post_called': False,
+                }
+            )
 
 def ViewAlerts(request):
     assert isinstance(request, HttpRequest)

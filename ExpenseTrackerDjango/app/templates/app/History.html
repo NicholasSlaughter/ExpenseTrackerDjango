@@ -5,6 +5,33 @@
 <h2>{{ title }}</h2>
 <h3>{{message}}</h3>
 
+<div class="row-md-4">
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            {% if post_called %}
+            <select id="order_type" type="text" name="order_type" onchange="this.form.submit()">
+                <option selected disabled="true">{{sort}}</option>
+                <option>Newest - Oldest</option>
+                <option>Oldest - Newest</option>                
+                <option>Lowest Amount - Highest Amount</option>
+                <option>Highest Amount - Lowest Amount</option>
+                <option>Category</option>
+            </select>
+            {% else %}
+            <select id="order_type" type="text" name="order_type" onchange="this.form.submit()">
+                <option selected disabled="true">-- List Order --</option>
+                <option>Newest - Oldest</option>
+                <option>Oldest - Newest</option>
+                <option>Lowest Amount - Highest Amount</option>
+                <option>Highest Amount - Lowest Amount</option>
+                <option>Category</option>
+            </select>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
 <table class="table">
     <thead>
         <tr>
