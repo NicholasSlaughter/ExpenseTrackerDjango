@@ -5,6 +5,7 @@ Definition of views.
 from datetime import datetime, timedelta
 from django.shortcuts import render
 from django.http import HttpRequest
+from django.contrib import messages
 from .models import * 
 
 def home(request):
@@ -54,23 +55,34 @@ def EnterExpense(request):
             expense_to_save.amount = request.POST.get('expense_amount')
             expense_to_save.date = datetime.now()
             expense_to_save.category = Category.objects.get(name=request.POST.get('category_name'))
-            try:
-                expense_to_save.save()
-                categories_to_display = Category.objects.all()
-                return render(
-                    request,
-                    'app/EnterExpense.html',
-                    {
-                        'title':'Enter Expense',
-                        'message':'Where you enter expenses',
-                        'year':datetime.now().year,
+            #try:
+            expense_to_save.save()
 
-                        'expense': Expense,
-                        'category': categories_to_display,
-                        }
-                    )
-            except:
-                print("Error can't save")
+            alerts_to_update = Alert.objects.filter(category=expense_to_save.category)
+
+            if alerts_to_update.exists():
+                amount_to_update = float(expense_to_save.amount)
+                for alert in alerts_to_update:
+                    alert.current_amount += amount_to_update
+                    if float(alert.current_amount) > float(alert.max_amount):
+                        messages.success(request, 'You are currently over your ' + alert.period.name + 'ly limit for ' + alert.category.name)
+                    alert.save()
+
+            categories_to_display = Category.objects.all()
+            return render(
+                request,
+                'app/EnterExpense.html',
+                {
+                    'title':'Enter Expense',
+                    'page_message':'Where you enter expenses',
+                    'year':datetime.now().year,
+
+                    'expense': Expense,
+                    'category': categories_to_display,
+                    }
+                )
+            #except:
+            #    print("Error can't save")
     else:
         categories_to_display = Category.objects.all()
         return render(
@@ -78,7 +90,7 @@ def EnterExpense(request):
             'app/EnterExpense.html',
             {
                 'title':'Enter Expense',
-                'message':'Where you enter expenses',
+                'page_message':'Where you enter expenses',
                 'year':datetime.now().year,
 
                 'expense': Expense,
