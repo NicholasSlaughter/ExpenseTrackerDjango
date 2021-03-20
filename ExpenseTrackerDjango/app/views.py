@@ -3,6 +3,7 @@ Definition of views.
 """
 
 from datetime import datetime, timedelta
+import pytz
 from django.shortcuts import render
 from django.http import HttpRequest
 from django.contrib import messages
@@ -62,10 +63,46 @@ def EnterExpense(request):
 
             if alerts_to_update.exists():
                 amount_to_update = float(expense_to_save.amount)
+                utc=pytz.UTC
+                today = datetime.now()
+                today = utc.localize(today)
+
                 for alert in alerts_to_update:
-                    alert.current_amount += amount_to_update
+                    #Sets the new period start date
+                    if alert.period_end_date < today:
+                        new_start_of_period = datetime.now()
+                        if(alert.period.name == "Week"):
+                            if new_start_of_period.weekday() != 6:
+                                new_start_of_period = new_start_of_period + timedelta(days= (6-new_start_of_period.weekday()))
+                                new_start_of_period = new_start_of_period - timedelta(days=7)
+
+                                alert.period_start_date = new_start_of_period
+                                alert.period_end_date = new_start_of_period + timedelta(days=6)
+
+                                alert.current_amount = amount_to_update
+                        elif(alert.period.name == "Month"):
+                            if new_start_of_period.day != 1:
+                                new_start_of_period = datetime(new_start_of_period.year,new_start_of_period.month,day=1,hour=1,minute=1,second=1)
+
+                                alert.period_start_date = new_start_of_period
+                                alert.period_end_date = datetime(year=new_start_of_period.year,month=(new_start_of_period.month+1),day=1,hour=1,minute=1,second=1)
+
+                                alert.current_amount = amount_to_update
+                        else:
+                            if new_start_of_period.month != 1 and new_start_of_period.day != 1:
+                                new_start_of_period = datetime(year=new_start_of_period.year,month=1,day=1,hour=1,minute=1,second=1)
+
+                                alert.period_start_date = new_start_of_period
+                                alert.period_end_date = datetime(year=new_start_of_period.year+1,month=new_start_of_period.month,day=1,hour=1,minute=1,second=1)
+
+                                alert.current_amount = amount_to_update
+                    else:
+                        alert.current_amount += amount_to_update
+
                     if float(alert.current_amount) > float(alert.max_amount):
                         messages.success(request, 'You are currently over your ' + alert.period.name + 'ly limit for ' + alert.category.name)
+
+
                     alert.save()
 
             categories_to_display = Category.objects.all()
