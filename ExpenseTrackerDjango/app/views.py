@@ -4,12 +4,13 @@ Definition of views.
 
 from datetime import datetime, timedelta
 import pytz
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import HttpRequest
 from django.contrib import messages
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.forms import UserCreationForm
 from .models import * 
+from .forms import SignUpForm
 
 def home(request):
     """Renders the home page."""
@@ -54,14 +55,17 @@ def EnterExpense(request):
 
     if request.method=="POST":
         if request.POST.get('category_name') and request.POST.get('expense_amount'):
+            user = request.user
+
             expense_to_save = Expense()
             expense_to_save.amount = request.POST.get('expense_amount')
             expense_to_save.date = datetime.now()
             expense_to_save.category = Category.objects.get(name=request.POST.get('category_name'))
+            expense_to_save.user = user
             #try:
             expense_to_save.save()
 
-            alerts_to_update = Alert.objects.filter(category=expense_to_save.category)
+            alerts_to_update = Alert.objects.filter(user=expense_to_save.user, category=expense_to_save.category)
 
             if alerts_to_update.exists():
                 amount_to_update = float(expense_to_save.amount)
@@ -139,10 +143,11 @@ def EnterExpense(request):
 
 def History(request):
     assert isinstance(request, HttpRequest)
+    user = request.user
 
     if request.method=="POST":
         if request.POST.get('order_type'):
-            expenses = Expense.objects.all()
+            expenses = Expense.objects.filter(user=user)
             order_of_list = request.POST.get('order_type')
             if order_of_list == "Newest - Oldest":
                 expenses = expenses.order_by('date')
@@ -169,7 +174,7 @@ def History(request):
             )
 
     else:
-        expenses = Expense.objects.all()
+        expenses = Expense.objects.filter(user=user)
         return render(
             request,
             'app/History.html',
@@ -185,9 +190,11 @@ def History(request):
 
 def ViewAlerts(request):
     assert isinstance(request, HttpRequest)
+    user = request.user
+
     if request.method=="POST":
         if request.POST.get('order_type'):
-            alerts = Alert.objects.all()
+            alerts = Alert.objects.filter(user=user)
             order_of_list = request.POST.get('order_type')
             if order_of_list == "Newest Period Start Date - Oldest Period Start Date":
                 alerts = alerts.order_by('period_start_date')
@@ -223,7 +230,7 @@ def ViewAlerts(request):
                 }
             )
     else:
-        alerts=Alert.objects.all()
+        alerts=Alert.objects.filter(user=user)
         return render(
             request,
             'app/ViewAlerts.html',
@@ -243,6 +250,7 @@ def AddAlerts(request):
     if request.method=="POST":
         if request.POST.get('category_name') and request.POST.get('alert_amount') and request.POST.get('period_name'):
             period_selected = str(request.POST.get('period_name'))
+            user = request.user
 
             alert_to_save = Alert()
             alert_to_save.max_amount = request.POST.get('alert_amount')
@@ -258,6 +266,7 @@ def AddAlerts(request):
 
             alert_to_save.category = Category.objects.get(name=request.POST.get('category_name'))
             alert_to_save.period = Period.objects.get(name=request.POST.get('period_name'))
+            alert_to_save.user = user
             try:
                 alert_to_save.save()
                 categories_to_display = Category.objects.all()
@@ -297,7 +306,7 @@ def AddAlerts(request):
 def SignUpView(request):
     assert isinstance(request, HttpRequest)
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+        form = SignUpForm(request.POST)
         if form.is_valid():
             form.save()
             username = form.cleaned_data.get('username')
@@ -306,5 +315,5 @@ def SignUpView(request):
             login(request,user)
             return redirect('home')
     else:
-        form = UserCreationForm()
+        form = SignUpForm()
     return render(request, 'app/SignUp.html', {'form': form,})
