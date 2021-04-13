@@ -65,6 +65,7 @@
     <Content Include="app\templates\app\AddAlerts.html" />
     <Content Include="app\templates\app\EnterExpense.html" />
     <Content Include="app\templates\app\History.html" />
+    <Content Include="app\templates\app\SignUp.html" />
     <Content Include="app\templates\app\ViewAlerts.html" />
     <Content Include="requirements.txt" />
     <Content Include="db.sqlite3" />
