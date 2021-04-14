@@ -31,10 +31,14 @@
                     <li><a href="{% url 'ViewAlerts' %}">View Alerts</a></li>
                     <li><a href="{% url 'AddAlerts' %}">Create Alerts</a></li>
                 </ul>
-                {% include 'app/loginpartial.html' %}
-                <ul class="nav navbar-nav">
+
+                {% if not user.is_authenticated %}
+                <ul class="nav navbar-nav navbar-right">
                     <li><a href="{% url 'SignUp' %}">Sign Up</a></li>
                 </ul>
+                {% endif %}
+
+                {% include 'app/loginpartial.html' %}
             </div>
         </div>
     </div>

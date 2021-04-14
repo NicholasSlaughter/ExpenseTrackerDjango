@@ -51,66 +51,82 @@ def about(request):
     )
 
 def EnterExpense(request):
-    assert isinstance(request, HttpRequest)
+    if request.user.is_authenticated:
+        assert isinstance(request, HttpRequest)
+        if request.method=="POST":
+            if request.POST.get('category_name') and request.POST.get('expense_amount'):
+                user = request.user
 
-    if request.method=="POST":
-        if request.POST.get('category_name') and request.POST.get('expense_amount'):
-            user = request.user
+                expense_to_save = Expense()
+                expense_to_save.amount = request.POST.get('expense_amount')
+                expense_to_save.date = datetime.now()
+                expense_to_save.category = Category.objects.get(name=request.POST.get('category_name'))
+                expense_to_save.user = user
+                #try:
+                expense_to_save.save()
 
-            expense_to_save = Expense()
-            expense_to_save.amount = request.POST.get('expense_amount')
-            expense_to_save.date = datetime.now()
-            expense_to_save.category = Category.objects.get(name=request.POST.get('category_name'))
-            expense_to_save.user = user
-            #try:
-            expense_to_save.save()
+                alerts_to_update = Alert.objects.filter(user=expense_to_save.user, category=expense_to_save.category)
 
-            alerts_to_update = Alert.objects.filter(user=expense_to_save.user, category=expense_to_save.category)
+                if alerts_to_update.exists():
+                    amount_to_update = float(expense_to_save.amount)
+                    utc=pytz.UTC
+                    today = datetime.now()
+                    today = utc.localize(today)
 
-            if alerts_to_update.exists():
-                amount_to_update = float(expense_to_save.amount)
-                utc=pytz.UTC
-                today = datetime.now()
-                today = utc.localize(today)
+                    for alert in alerts_to_update:
+                        #Sets the new period start date
+                        if alert.period_end_date < today:
+                            new_start_of_period = datetime.now()
+                            if(alert.period.name == "Week"):
+                                if new_start_of_period.weekday() != 6:
+                                    new_start_of_period = new_start_of_period + timedelta(days= (6-new_start_of_period.weekday()))
+                                    new_start_of_period = new_start_of_period - timedelta(days=7)
 
-                for alert in alerts_to_update:
-                    #Sets the new period start date
-                    if alert.period_end_date < today:
-                        new_start_of_period = datetime.now()
-                        if(alert.period.name == "Week"):
-                            if new_start_of_period.weekday() != 6:
-                                new_start_of_period = new_start_of_period + timedelta(days= (6-new_start_of_period.weekday()))
-                                new_start_of_period = new_start_of_period - timedelta(days=7)
+                                    alert.period_start_date = new_start_of_period
+                                    alert.period_end_date = new_start_of_period + timedelta(days=6)
 
-                                alert.period_start_date = new_start_of_period
-                                alert.period_end_date = new_start_of_period + timedelta(days=6)
+                                    alert.current_amount = amount_to_update
+                            elif(alert.period.name == "Month"):
+                                if new_start_of_period.day != 1:
+                                    new_start_of_period = datetime(new_start_of_period.year,new_start_of_period.month,day=1,hour=1,minute=1,second=1)
 
-                                alert.current_amount = amount_to_update
-                        elif(alert.period.name == "Month"):
-                            if new_start_of_period.day != 1:
-                                new_start_of_period = datetime(new_start_of_period.year,new_start_of_period.month,day=1,hour=1,minute=1,second=1)
+                                    alert.period_start_date = new_start_of_period
+                                    alert.period_end_date = datetime(year=new_start_of_period.year,month=(new_start_of_period.month+1),day=1,hour=1,minute=1,second=1)
 
-                                alert.period_start_date = new_start_of_period
-                                alert.period_end_date = datetime(year=new_start_of_period.year,month=(new_start_of_period.month+1),day=1,hour=1,minute=1,second=1)
+                                    alert.current_amount = amount_to_update
+                            else:
+                                if new_start_of_period.month != 1 and new_start_of_period.day != 1:
+                                    new_start_of_period = datetime(year=new_start_of_period.year,month=1,day=1,hour=1,minute=1,second=1)
 
-                                alert.current_amount = amount_to_update
+                                    alert.period_start_date = new_start_of_period
+                                    alert.period_end_date = datetime(year=new_start_of_period.year+1,month=new_start_of_period.month,day=1,hour=1,minute=1,second=1)
+
+                                    alert.current_amount = amount_to_update
                         else:
-                            if new_start_of_period.month != 1 and new_start_of_period.day != 1:
-                                new_start_of_period = datetime(year=new_start_of_period.year,month=1,day=1,hour=1,minute=1,second=1)
+                            alert.current_amount += amount_to_update
 
-                                alert.period_start_date = new_start_of_period
-                                alert.period_end_date = datetime(year=new_start_of_period.year+1,month=new_start_of_period.month,day=1,hour=1,minute=1,second=1)
-
-                                alert.current_amount = amount_to_update
-                    else:
-                        alert.current_amount += amount_to_update
-
-                    if float(alert.current_amount) > float(alert.max_amount):
-                        messages.success(request, 'You are currently over your ' + alert.period.name + 'ly limit for ' + alert.category.name)
+                        if float(alert.current_amount) > float(alert.max_amount):
+                            messages.success(request, 'You are currently over your ' + alert.period.name + 'ly limit for ' + alert.category.name)
 
 
-                    alert.save()
+                        alert.save()
 
+                categories_to_display = Category.objects.all()
+                return render(
+                    request,
+                    'app/EnterExpense.html',
+                    {
+                        'title':'Enter Expense',
+                        'page_message':'Where you enter expenses',
+                        'year':datetime.now().year,
+
+                        'expense': Expense,
+                        'category': categories_to_display,
+                        }
+                    )
+                #except:
+                #    print("Error can't save")
+        else:
             categories_to_display = Category.objects.all()
             return render(
                 request,
@@ -124,184 +140,179 @@ def EnterExpense(request):
                     'category': categories_to_display,
                     }
                 )
-            #except:
-            #    print("Error can't save")
     else:
-        categories_to_display = Category.objects.all()
-        return render(
-            request,
-            'app/EnterExpense.html',
-            {
-                'title':'Enter Expense',
-                'page_message':'Where you enter expenses',
-                'year':datetime.now().year,
-
-                'expense': Expense,
-                'category': categories_to_display,
-                }
-            )
+        return redirect('login')
 
 def History(request):
-    assert isinstance(request, HttpRequest)
-    user = request.user
+    if request.user.is_authenticated:
+        assert isinstance(request, HttpRequest)
+        user = request.user
 
-    if request.method=="POST":
-        if request.POST.get('order_type'):
+        if request.method=="POST":
+            if request.POST.get('order_type'):
+                expenses = Expense.objects.filter(user=user)
+                order_of_list = request.POST.get('order_type')
+                if order_of_list == "Newest - Oldest":
+                    expenses = expenses.order_by('date')
+                elif order_of_list == "Oldest - Newest":
+                    expenses = expenses.order_by('-date')
+                elif order_of_list == "Highest Amount - Lowest Amount":
+                    expenses = expenses.order_by('-amount')
+                elif order_of_list == "Lowest Amount - Highest Amount":
+                    expenses = expenses.order_by('amount')
+                else:
+                    expenses = expenses.order_by('category__name')
+
+            return render(
+                request,
+                'app/History.html',
+                {
+                    'title':'Expense History',
+                    'message':'Where you view your history of expenses',
+                    'year':datetime.now().year,
+                    'expenses': expenses,
+                    'sort': order_of_list,
+                    'post_called': True,
+                    }
+                )
+
+        else:
             expenses = Expense.objects.filter(user=user)
-            order_of_list = request.POST.get('order_type')
-            if order_of_list == "Newest - Oldest":
-                expenses = expenses.order_by('date')
-            elif order_of_list == "Oldest - Newest":
-                expenses = expenses.order_by('-date')
-            elif order_of_list == "Highest Amount - Lowest Amount":
-                expenses = expenses.order_by('-amount')
-            elif order_of_list == "Lowest Amount - Highest Amount":
-                expenses = expenses.order_by('amount')
-            else:
-                expenses = expenses.order_by('category__name')
-
-        return render(
-            request,
-            'app/History.html',
-            {
-                'title':'Expense History',
-                'message':'Where you view your history of expenses',
-                'year':datetime.now().year,
-                'expenses': expenses,
-                'sort': order_of_list,
-                'post_called': True,
-                }
-            )
-
+            return render(
+                request,
+                'app/History.html',
+                {
+                    'title':'Expense History',
+                    'message':'Where you view your history of expenses',
+                    'year':datetime.now().year,
+                    'expenses': expenses,
+                    'sort': None,
+                    'post_called': False,
+                    }
+                )
     else:
-        expenses = Expense.objects.filter(user=user)
-        return render(
-            request,
-            'app/History.html',
-            {
-                'title':'Expense History',
-                'message':'Where you view your history of expenses',
-                'year':datetime.now().year,
-                'expenses': expenses,
-                'sort': None,
-                'post_called': False,
-                }
-            )
+        return redirect('login')
 
 def ViewAlerts(request):
-    assert isinstance(request, HttpRequest)
-    user = request.user
+    if request.user.is_authenticated:
+        assert isinstance(request, HttpRequest)
+        user = request.user
 
-    if request.method=="POST":
-        if request.POST.get('order_type'):
-            alerts = Alert.objects.filter(user=user)
-            order_of_list = request.POST.get('order_type')
-            if order_of_list == "Newest Period Start Date - Oldest Period Start Date":
-                alerts = alerts.order_by('period_start_date')
-            elif order_of_list == "Oldest Period Start Date - Newest Period Start Date":
-                alerts = alerts.order_by('-period_start_date')
-            elif order_of_list == "Newest Period End Date - Oldest Period End Date":
-                alerts = alerts.order_by('period_end_date')
-            elif order_of_list == "Oldest Period End Date - Newest Period End Date":
-                alerts = alerts.order_by('-period_end_date')
-            elif order_of_list == "Highest Max Amount - Lowest Max Amount":
-                alerts = alerts.order_by('-max_amount')
-            elif order_of_list == "Lowest Max Amount - Highest Max Amount":
-                alerts = alerts.order_by('max_amount')
-            elif order_of_list == "Highest Current Amount - Lowest Current Amount":
-                alerts = alerts.order_by('-current_amount')
-            elif order_of_list == "Lowest Current Amount - Highest Current Amount":
-                alerts = alerts.order_by('current_amount')
-            elif order_of_list == "Category":
-                alerts = alerts.order_by('category__name')
-            else:
-                alerts = alerts.order_by('period__name')
+        if request.method=="POST":
+            if request.POST.get('order_type'):
+                alerts = Alert.objects.filter(user=user)
+                order_of_list = request.POST.get('order_type')
+                if order_of_list == "Newest Period Start Date - Oldest Period Start Date":
+                    alerts = alerts.order_by('period_start_date')
+                elif order_of_list == "Oldest Period Start Date - Newest Period Start Date":
+                    alerts = alerts.order_by('-period_start_date')
+                elif order_of_list == "Newest Period End Date - Oldest Period End Date":
+                    alerts = alerts.order_by('period_end_date')
+                elif order_of_list == "Oldest Period End Date - Newest Period End Date":
+                    alerts = alerts.order_by('-period_end_date')
+                elif order_of_list == "Highest Max Amount - Lowest Max Amount":
+                    alerts = alerts.order_by('-max_amount')
+                elif order_of_list == "Lowest Max Amount - Highest Max Amount":
+                    alerts = alerts.order_by('max_amount')
+                elif order_of_list == "Highest Current Amount - Lowest Current Amount":
+                    alerts = alerts.order_by('-current_amount')
+                elif order_of_list == "Lowest Current Amount - Highest Current Amount":
+                    alerts = alerts.order_by('current_amount')
+                elif order_of_list == "Category":
+                    alerts = alerts.order_by('category__name')
+                else:
+                    alerts = alerts.order_by('period__name')
 
-        return render(
-            request,
-            'app/ViewAlerts.html',
-            {
-                'title':'View Alerts',
-                'message':'Where you view your alerts',
-                'year':datetime.now().year,
-                'alerts':alerts,
-                'sort': order_of_list,
-                'post_called': True,
-                }
-            )
+            return render(
+                request,
+                'app/ViewAlerts.html',
+                {
+                    'title':'View Alerts',
+                    'message':'Where you view your alerts',
+                    'year':datetime.now().year,
+                    'alerts':alerts,
+                    'sort': order_of_list,
+                    'post_called': True,
+                    }
+                )
+        else:
+            alerts=Alert.objects.filter(user=user)
+            return render(
+                request,
+                'app/ViewAlerts.html',
+                {
+                    'title':'View Alerts',
+                    'message':'Where you view your alerts',
+                    'year':datetime.now().year,
+                    'alerts':alerts,
+                    'sort': None,
+                    'post_called': False,
+                    }
+                )
     else:
-        alerts=Alert.objects.filter(user=user)
-        return render(
-            request,
-            'app/ViewAlerts.html',
-            {
-                'title':'View Alerts',
-                'message':'Where you view your alerts',
-                'year':datetime.now().year,
-                'alerts':alerts,
-                'sort': None,
-                'post_called': False,
-                }
-            )
+        return redirect('login')
 
 def AddAlerts(request):
-    assert isinstance(request, HttpRequest)
+    if request.user.is_authenticated:
+        assert isinstance(request, HttpRequest)
 
-    if request.method=="POST":
-        if request.POST.get('category_name') and request.POST.get('alert_amount') and request.POST.get('period_name'):
-            period_selected = str(request.POST.get('period_name'))
-            user = request.user
+        if request.method=="POST":
+            if request.POST.get('category_name') and request.POST.get('alert_amount') and request.POST.get('period_name'):
+                period_selected = str(request.POST.get('period_name'))
+                user = request.user
 
-            alert_to_save = Alert()
-            alert_to_save.max_amount = request.POST.get('alert_amount')
-            alert_to_save.current_amount = 0
-            alert_to_save.period_start_date = datetime.now()
+                alert_to_save = Alert()
+                alert_to_save.max_amount = request.POST.get('alert_amount')
+                alert_to_save.current_amount = 0
+                alert_to_save.period_start_date = datetime.now()
 
-            if period_selected == "Week":
-                alert_to_save.period_end_date = datetime.now() + timedelta(weeks=1)
-            elif period_selected == "Month":
-                alert_to_save.period_end_date = datetime.now() + timedelta(weeks=4)
-            else:
-                alert_to_save.period_end_date = datetime.now() + timedelta(days=365)
+                if period_selected == "Week":
+                    alert_to_save.period_end_date = datetime.now() + timedelta(weeks=1)
+                elif period_selected == "Month":
+                    alert_to_save.period_end_date = datetime.now() + timedelta(weeks=4)
+                else:
+                    alert_to_save.period_end_date = datetime.now() + timedelta(days=365)
 
-            alert_to_save.category = Category.objects.get(name=request.POST.get('category_name'))
-            alert_to_save.period = Period.objects.get(name=request.POST.get('period_name'))
-            alert_to_save.user = user
-            try:
-                alert_to_save.save()
-                categories_to_display = Category.objects.all()
-                period_to_display = Period.objects.all()
-                return render(
-                    request,
-                    'app/AddAlerts.html',
-                    {
-                        'title':'Create Alert',
-                        'message':'Where you create a new alert',
-                        'year':datetime.now().year,
+                alert_to_save.category = Category.objects.get(name=request.POST.get('category_name'))
+                alert_to_save.period = Period.objects.get(name=request.POST.get('period_name'))
+                alert_to_save.user = user
+                try:
+                    alert_to_save.save()
+                    categories_to_display = Category.objects.all()
+                    period_to_display = Period.objects.all()
+                    return render(
+                        request,
+                        'app/AddAlerts.html',
+                        {
+                            'title':'Create Alert',
+                            'message':'Where you create a new alert',
+                            'year':datetime.now().year,
 
-                        'alert': Alert,
-                        'category': categories_to_display,
-                        'period': period_to_display,
-                        }
-                    )
-            except:
-                print("Error can't save")
+                            'alert': Alert,
+                            'category': categories_to_display,
+                            'period': period_to_display,
+                            }
+                        )
+                except:
+                    print("Error can't save")
+        else:
+            categories_to_display = Category.objects.all()
+            period_to_display = Period.objects.all()
+            return render(
+                request,
+                'app/AddAlerts.html',
+                {
+                    'title':'Create Alert',
+                    'message':'Where you create a new alert',
+                    'year':datetime.now().year,
+
+                    'alert': Alert,
+                    'category': categories_to_display,
+                    'period': period_to_display,
+                    }
+                )
     else:
-        categories_to_display = Category.objects.all()
-        period_to_display = Period.objects.all()
-        return render(
-            request,
-            'app/AddAlerts.html',
-            {
-                'title':'Create Alert',
-                'message':'Where you create a new alert',
-                'year':datetime.now().year,
-
-                'alert': Alert,
-                'category': categories_to_display,
-                'period': period_to_display,
-                }
-            )
+        return redirect('login')
 
 def SignUpView(request):
     assert isinstance(request, HttpRequest)
